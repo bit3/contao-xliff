@@ -1,0 +1,68 @@
+<div id="tl_buttons">
+    <a href="<?php echo $this->href; ?>" class="header_back"
+       title="<?php echo $this->title; ?>"><?php echo $this->button; ?></a>
+</div>
+
+<form action="contao/main.php?do=xliff" method="post">
+    <input type="hidden" name="FORM_SUBMIT" value="xliff_export">
+    <input type="hidden" name="REQUEST_TOKEN" value="<?php echo REQUEST_TOKEN; ?>">
+
+    <div class="tl_formbody_edit">
+        <fieldset id="pal_xliff_export_legend" class="tl_tbox">
+            <legend>export</legend>
+
+            <div class="w50">
+                <h3><label for="ctrl_name">language name</label></h3>
+                <input type="text" name="name" id="ctrl_name" class="tl_text">
+            </div>
+
+            <div class="clr w50">
+                <h3><label for="ctrl_source_language">source language</label></h3>
+                <select id="ctrl_source_language" name="source-language" class="tl_select">
+                    <?php foreach ($this->languages as $value => $label): ?>
+                    <option value="<?php echo $value; ?>"<?php if ($value == $GLOBALS['TL_LANGUAGE']): ?>
+                            selected="selected"<?php endif; ?>><?php echo $label; ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="w50">
+                <h3><label for="ctrl_target_language">target language</label></h3>
+                <select id="ctrl_target_language" name="target-language" class="tl_select">
+                    <option value="">-</option>
+                    <?php foreach ($this->languages as $value => $label): ?>
+                    <option value="<?php echo $value; ?>"><?php echo $label; ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </fieldset>
+    </div>
+
+    <div class="tl_formbody_submit">
+        <div class="tl_submit_container">
+            <input type="submit" value="Export">
+        </div>
+    </div>
+</form>
+
+<form action="contao/main.php?do=xliff" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="FORM_SUBMIT" value="xliff_import">
+    <input type="hidden" name="REQUEST_TOKEN" value="<?php echo REQUEST_TOKEN; ?>">
+
+    <div class="tl_formbody_edit">
+        <fieldset id="pal_xliff_import_legend" class="tl_tbox">
+            <legend>import</legend>
+
+            <div class="w50">
+                <h3><label for="ctrl_document">file</label></h3>
+                <input type="file" name="document" id="ctrl_document" class="tl_file">
+            </div>
+        </fieldset>
+    </div>
+
+    <div class="tl_formbody_submit">
+        <div class="tl_submit_container">
+            <input type="submit" value="Export">
+        </div>
+    </div>
+</form>
