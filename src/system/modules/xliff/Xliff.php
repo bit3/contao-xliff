@@ -8,16 +8,27 @@ class Xliff
     const NS = 'urn:oasis:names:tc:xliff:document:1.2';
 
     /**
-     * @var XliffHelper
+     * @var Xliff
      */
-    protected $helper = null;
+    protected static $objInstance = null;
+
+    /**
+     * @static
+     * @return Xliff
+     */
+    public static function getInstance()
+    {
+        if (self::$objInstance === null) {
+            self::$objInstance = new Xliff();
+        }
+        return self::$objInstance;
+    }
 
     /**
      * Singleton constructor.
      */
-    public function __construct(XliffHelper $helper = null)
+    protected function __construct()
     {
-        $this->helper = $helper;
     }
 
     /**
@@ -80,8 +91,7 @@ class Xliff
                                        '.') !== false
                             ) {
                                 $part = (float) $part;
-                            }
-                            // key is an integer
+                            } // key is an integer
                             else {
                                 $part = (int) $part;
                             }
@@ -113,36 +123,15 @@ class Xliff
      *
      * @return DOMDocument
      */
-    public function generateXliff($strName,
+    public function generateXliff($strOriginal,
+                                  $strDataType,
+                                  $intDate,
+                                  $strName,
                                   $strSourceLanguage,
-                                  $strTargetLanguage = false,
-                                  XliffHelper $helper = null)
+                                  array $arrSourceLanguage,
+                                  $strTargetLanguage,
+                                  array $arrTargetLanguage = array())
     {
-        // set helper to instance helper, if none given
-        if ($helper === null) {
-            $helper = $this->helper;
-        }
-
-        // if no helper is availeable, throw an exception
-        if ($helper === null) {
-            throw new Exception('Helper object is required to generate xliff document!');
-        }
-
-        // get the source language array
-        $arrSourceLanguage = $helper->getLanguageArray($strName,
-                                                       $strSourceLanguage);
-
-        // add the target language
-        if ($strTargetLanguage) {
-            // get the target language array
-            $arrTargetLanguage = $helper->getLanguageArray($strName,
-                                                           $strTargetLanguage);
-        }
-        else {
-            // use a dummy array
-            $arrTargetLanguage = array();
-        }
-
         // create the new document
         $doc = new DOMDocument();
 
@@ -151,6 +140,7 @@ class Xliff
         // little hack to workaround the unusable php namespace handling
         $xliff->setAttribute('xmlns',
                              self::NS);
+        // add the xliff version
         $xliff->setAttribute('version',
                              '1.2');
         $doc->appendChild($xliff);
@@ -158,11 +148,16 @@ class Xliff
         // create the file element
         $file = $doc->createElement('file');
         $file->setAttribute('original',
-                            $strName . '.php');
+                            $strOriginal);
         $file->setAttribute('source-language',
                             $strSourceLanguage);
         $file->setAttribute('datatype',
-                            'php');
+                            $strDataType);
+        $file->setAttribute('date',
+                            date('c',
+                                 $intDate));
+        $file->setAttribute('target-language',
+                            $strTargetLanguage);
         $xliff->appendChild($file);
 
         // create the body element
@@ -173,7 +168,9 @@ class Xliff
         $this->generateXliffUnits($doc,
                                   $body,
                                   $strName,
+                                  $strSourceLanguage,
                                   $arrSourceLanguage,
+                                  $strTargetLanguage,
                                   $arrTargetLanguage);
 
         // return the document
@@ -192,7 +189,9 @@ class Xliff
     protected function generateXliffUnits(DOMDocument $doc,
                                           DOMElement $body,
                                           $strPath,
+                                          $strSourceLanguage,
                                           array $arrSourceLanguage,
+                                          $strTargetLanguage,
                                           $arrTargetLanguage)
     {
         foreach ($arrSourceLanguage as $strKey => $varSourceValue) {
@@ -208,11 +207,11 @@ class Xliff
                 $this->generateXliffUnits($doc,
                                           $body,
                                           $strItemPath,
+                                          $strSourceLanguage,
                                           $varSourceValue,
+                                          $strTargetLanguage,
                                           $varTargetValue);
-            }
-
-            // add the current item
+            } // add the current item
             else {
                 // create the trans-unit element
                 $transUnit = $doc->createElement('trans-unit');
@@ -222,11 +221,149 @@ class Xliff
 
                 // create the source element
                 $source = $doc->createElement('source');
+                $source->setAttribute('xml:lang',
+                                      $strSourceLanguage);
                 $source->appendChild($doc->createTextNode($varSourceValue));
                 $transUnit->appendChild($source);
 
                 // create the target element
                 $target = $doc->createElement('target');
+                $target->setAttribute('xml:lang',
+                                      $strTargetLanguage);
+                $target->appendChild($doc->createTextNode($varTargetValue));
+                $transUnit->appendChild($target);
+            }
+        }
+    }
+
+    /**
+     * Export language file into an xliff document.
+     *
+     * @param string $strName
+     * @param string $strSourceLanguage
+     *
+     * @return DOMDocument
+     */
+    public function updateXliffSource(DOMDocument $doc,
+                                      $intDate,
+                                      $strName,
+                                      $strSourceLanguage,
+                                      array $arrSourceLanguage)
+    {
+        // create xpath object
+        $xpath = new DOMXPath($doc);
+
+        // register namespace to xpath engine
+        $xpath->registerNamespace('xliff',
+                                  Xliff::NS);
+
+        // search file elements
+        /** @var DOMNodeList $transUnits */
+        $files = $xpath->query('/xliff:xliff/xliff:file');
+
+        // walk over the file elements
+        for ($i = 0; $i < $files->length; $i++) {
+            /** @var DOMElement $file */
+            $file = $files->item($i);
+
+            $strTargetLanguage = $file->getAttribute('target-language');
+
+            // update date timestamp
+            $file->setAttribute('date',
+                                date('c',
+                                     $intDate));
+
+            $bodies = $xpath->query('xliff:body',
+                                        $file);
+
+            for ($j = 0; $j < $bodies->length; $j++) {
+                /** @var DOMElement $transUnit */
+                $body = $bodies->item($j);
+
+                $this->updateOrGenerateXliffUnits($doc, $body, $xpath, $strName, $strSourceLanguage, $arrSourceLanguage, $strTargetLanguage, null);
+            }
+        }
+
+        return $doc;
+    }
+
+    /**
+     * Recursively add language items to the document.
+     *
+     * @param DOMDocument $doc
+     * @param DOMElement  $body
+     * @param             $strPath
+     * @param array       $arrSourceLanguage
+     * @param             $arrTargetLanguage
+     */
+    protected function updateOrGenerateXliffUnits(DOMDocument $doc,
+                                                  DOMElement $body,
+                                                  DOMXPath $xpath,
+                                                  $strPath,
+                                                  $strSourceLanguage,
+                                                  array $arrSourceLanguage,
+                                                  $strTargetLanguage,
+                                                  $arrTargetLanguage)
+    {
+        foreach ($arrSourceLanguage as $strKey => $varSourceValue) {
+            $varTargetValue = is_array($arrTargetLanguage) && isset($arrTargetLanguage[$strKey])
+                ? $arrTargetLanguage[$strKey]
+                : '...';
+
+            // build the path for the current item
+            $strItemPath = $strPath . '/' . $strKey;
+
+            // search recursively
+            if (is_array($varSourceValue)) {
+                $this->generateXliffUnits($doc,
+                                          $body,
+                                          $strItemPath,
+                                          $strSourceLanguage,
+                                          $varSourceValue,
+                                          $strTargetLanguage,
+                                          $varTargetValue);
+                continue;
+            }
+
+            // search for existing trans-unit
+            $transUnits = $xpath->query('xliff:trans-unit[@id=\'' . $strItemPath . '\']',
+                                        $body);
+
+            // update existing item
+            if ($transUnits->length) {
+                $transUnit = $transUnits->item(0);
+
+                $sources = $xpath->query('xliff:source',
+                                         $transUnit);
+
+                $source = $sources->item(0);
+
+                while ($source->childNodes->length) {
+                    $source->removeChild($source->childNodes->item(0));
+                }
+
+                $source->appendChild($doc->createTextNode($varSourceValue));
+            }
+
+            // or add new item
+            else {
+                // create the trans-unit element
+                $transUnit = $doc->createElement('trans-unit');
+                $transUnit->setAttribute('id',
+                                         $strItemPath);
+                $body->appendChild($transUnit);
+
+                // create the source element
+                $source = $doc->createElement('source');
+                $source->setAttribute('xml:lang',
+                                      $strSourceLanguage);
+                $source->appendChild($doc->createTextNode($varSourceValue));
+                $transUnit->appendChild($source);
+
+                // create the target element
+                $target = $doc->createElement('target');
+                $target->setAttribute('xml:lang',
+                                      $strTargetLanguage);
                 $target->appendChild($doc->createTextNode($varTargetValue));
                 $transUnit->appendChild($target);
             }
@@ -286,17 +423,19 @@ EOF;
                                                  $strBuffer,
                                                  $intDepth + 1);
             }
-            else if (is_array($varItem)) {
-                $a = var_export($varItem[0],
-                                true);
-                $b = var_export($varItem[1],
-                                true);
-                $strBuffer .= $strItemVariableName . ' = array(' . $a . ', ' . $b . ");\n";
-            }
             else {
-                $varItem = var_export($varItem,
-                                      true);
-                $strBuffer .= $strItemVariableName . ' = ' . $varItem . ";\n";
+                if (is_array($varItem)) {
+                    $a = var_export($varItem[0],
+                                    true);
+                    $b = var_export($varItem[1],
+                                    true);
+                    $strBuffer .= $strItemVariableName . ' = array(' . $a . ', ' . $b . ");\n";
+                }
+                else {
+                    $varItem = var_export($varItem,
+                                          true);
+                    $strBuffer .= $strItemVariableName . ' = ' . $varItem . ";\n";
+                }
             }
         }
     }
