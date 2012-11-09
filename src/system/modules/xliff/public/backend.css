@@ -68,7 +68,7 @@ table.tl_listing td {
 }
 
 .status_php {
-	color: #bbb;
+	color: #00b;
 }
 .status_uptodate {
 	color: #3a0;
@@ -76,6 +76,6 @@ table.tl_listing td {
 .status_outdated {
 	color: #f60;
 }
-.status_missingsource {
+.status_missing {
 	color: #f00;
 }

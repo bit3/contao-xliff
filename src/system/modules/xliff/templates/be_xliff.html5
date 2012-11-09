@@ -3,7 +3,7 @@
        title="<?php echo $this->title; ?>"><?php echo $this->button; ?></a>
 </div>
 
-<?php $arrLanguages = $this->getLanguages(); ?>
+<?php echo $this->getMessages(); ?>
 
 <div class="tl_listing_container list_view">
     <?php foreach ($this->modules as $module): if (isset($this->files[$module])): ?>
@@ -18,68 +18,31 @@
                         <?php foreach ($this->languages as $language): ?>
                         <th class="tl_folder_tlist"><?php echo $language; ?></th>
                         <?php endforeach; ?>
-                        <th class="tl_folder_tlist"></th>
                     </tr>
                 </thead>
                 <tbody>
                 <?php $even = true; foreach ($files as $lang => $languages): ?>
-                    <tr class="<?php echo $even ? 'even' : 'odd'; $even = !$even; ?>"
-                        onmouseover="Theme.hoverRow(this,1)" onmouseout="Theme.hoverRow(this,0)">
+                    <tr class="<?php echo $even ? 'even' : 'odd'; $even = !$even; ?>" onmouseover="Theme.hoverRow(this,1)" onmouseout="Theme.hoverRow(this,0)">
                         <td class="tl_file_list"><?php echo $lang; ?></td>
                         <?php foreach ($this->languages as $language): ?>
-                        <td class="tl_file_list" style="width:40px">
-                            <?php if (isset($languages['xliff'][$language]['mtime'])): ?>
-                                <?php if ($languages['xliff'][$language]['status'] == 'outdated'): ?>
-                                    <form action="contao/main.php?do=xliff" method="post">
-                                        <input type="hidden" name="FORM_SUBMIT" value="xliff_update">
-                                        <input type="hidden" name="REQUEST_TOKEN" value="<?php echo REQUEST_TOKEN; ?>">
-                                        <input type="hidden" name="module" value="<?php echo $module; ?>">
-                                        <input type="hidden" name="lang" value="<?php echo $lang; ?>">
-                                        <input type="hidden" name="target-language" value="<?php echo $language; ?>">
-                                        <button type="submit" class="status_<?php echo $languages['xliff'][$language]['status']; ?>" title="<?php echo $languages['xliff'][$language]['status']; ?>">XLIFF</button>
-                                    </form>
-                                <?php else: ?>
-                                    <span class="status_<?php echo $languages['xliff'][$language]['status']; ?>" title="<?php echo $languages['xliff'][$language]['status']; ?>">XLIFF</span>
-                                <?php endif; ?>
-                            <?php endif;?>
-                            <?php if (isset($languages['xliff'][$language]['mtime']) && isset($languages['php'][$language]['mtime'])): ?>
-                                &amp;
-                            <?php endif;?>
-                            <?php if (isset($languages['php'][$language]['mtime'])): ?>
-                                <span class="status_php">PHP</span>
+                        <td class="tl_file_list">
+                            <?php if (isset($languages[$language]['php']['mtime'])): ?>
+                                <a href="contao/main.php?do=xliff&amp;act=generate&amp;module=<?php echo $module ?>&amp;language=<?php echo $language; ?>&amp;comp=<?php echo $lang; ?>"><?php
+                                    ?><span class="status_php">PHP</span><?php
+                                    ?>&nbsp;&rArr;&nbsp;<?php
+                                    if (!isset($languages[$language]['xlf']['mtime'])):
+                                        ?><span class="status_missing" title="xliff missing">XLIFF</span><?php
+                                    elseif ($languages[$language]['xlf']['mtime'] >= $languages[$language]['php']['mtime']):
+                                        ?><span class="status_uptodate" title="up to date">XLIFF</span><?php
+                                    else:
+                                        ?><span class="status_outdated" title="need update">XLIFF</span><?php
+                                    endif;
+                                ?></a>
+                            <?php elseif (isset($languages[$language]['xlf']['mtime'])): ?>
+                                <span class="status_uptodate" title="up to date">XLIFF</span>
                             <?php endif; ?>
                         </td>
                         <?php endforeach; ?>
-                        <td class="tl_file_list" style="width:28px;position:relative">
-                            <div class="add-language">
-                                <form action="contao/main.php?do=xliff" method="post">
-                                    <input type="hidden" name="FORM_SUBMIT" value="xliff_generate">
-                                    <input type="hidden" name="REQUEST_TOKEN" value="<?php echo REQUEST_TOKEN; ?>">
-                                    <input type="hidden" name="module" value="<?php echo $module; ?>">
-                                    <input type="hidden" name="lang" value="<?php echo $lang; ?>">
-
-                                    <div class="source-language">
-                                        <select class="tl_select tl_chosen" name="source-language">
-                                        <?php foreach ($languages['php'] as $k => $v): ?>
-                                            <option value="<?php echo $k; ?>"><?php echo $arrLanguages[$k]; ?></option>
-                                        <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="language-spacer">
-                                        &rArr;
-                                    </div>
-                                    <div class="target-language">
-                                        <select class="tl_select tl_chosen" name="target-language">
-                                        <?php foreach ($arrLanguages as $k => $v): if (!isset($languages['xliff'][$k])): ?>
-                                            <option value="<?php echo $k; ?>"><?php echo $v; ?></option>
-                                        <?php endif; endforeach; ?>
-                                        </select>
-                                    </div>
-
-                                    <button type="submit" class="add-icon"><img src="system/themes/<?php echo $this->getTheme(); ?>/images/new.gif"></button>
-                                </form>
-                            </div>
-                        </td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -88,69 +51,3 @@
         </div>
     <?php endif; endforeach; ?>
 </div>
-
-<?php /*
-<form action="contao/main.php?do=xliff" method="post">
-    <input type="hidden" name="FORM_SUBMIT" value="xliff_export">
-    <input type="hidden" name="REQUEST_TOKEN" value="<?php echo REQUEST_TOKEN; ?>">
-
-    <div class="tl_formbody_edit">
-        <fieldset id="pal_xliff_export_legend" class="tl_tbox">
-            <legend>export</legend>
-
-            <div class="w50">
-                <h3><label for="ctrl_name">language name</label></h3>
-                <input type="text" name="name" id="ctrl_name" class="tl_text">
-            </div>
-
-            <div class="clr w50">
-                <h3><label for="ctrl_source_language">source language</label></h3>
-                <select id="ctrl_source_language" name="source-language" class="tl_select">
-                    <?php foreach ($this->languages as $value => $label): ?>
-                    <option value="<?php echo $value; ?>"<?php if ($value == $GLOBALS['TL_LANGUAGE']): ?>
-                            selected="selected"<?php endif; ?>><?php echo $label; ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="w50">
-                <h3><label for="ctrl_target_language">target language</label></h3>
-                <select id="ctrl_target_language" name="target-language" class="tl_select">
-                    <option value="">-</option>
-                    <?php foreach ($this->languages as $value => $label): ?>
-                    <option value="<?php echo $value; ?>"><?php echo $label; ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </fieldset>
-    </div>
-
-    <div class="tl_formbody_submit">
-        <div class="tl_submit_container">
-            <input type="submit" value="Export">
-        </div>
-    </div>
-</form>
-
-<form action="contao/main.php?do=xliff" method="post" enctype="multipart/form-data">
-    <input type="hidden" name="FORM_SUBMIT" value="xliff_import">
-    <input type="hidden" name="REQUEST_TOKEN" value="<?php echo REQUEST_TOKEN; ?>">
-
-    <div class="tl_formbody_edit">
-        <fieldset id="pal_xliff_import_legend" class="tl_tbox">
-            <legend>import</legend>
-
-            <div class="w50">
-                <h3><label for="ctrl_document">file</label></h3>
-                <input type="file" name="document" id="ctrl_document" class="tl_file">
-            </div>
-        </fieldset>
-    </div>
-
-    <div class="tl_formbody_submit">
-        <div class="tl_submit_container">
-            <input type="submit" value="Export">
-        </div>
-    </div>
-</form>
-*/ ?>

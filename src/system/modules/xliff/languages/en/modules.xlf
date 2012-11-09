@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<xliff version="1.0" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+	<file original="modules.xliff" source-language="de" datatype="php">
+		<body>
+			<trans-unit id="MOD.xliff">
+				<source>Xliff Übersetzungsmodul</source>
+				<target>Xliff translation tool</target>
+			</trans-unit>
+		</body>
+	</file>
+</xliff>

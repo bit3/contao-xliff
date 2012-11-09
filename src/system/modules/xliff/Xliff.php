@@ -65,19 +65,24 @@ class Xliff
                 $transUnit = $transUnits->item($i);
 
                 // search for the target element
-                /** @var DOMElement $target */
-                $target = $xpath
+                /** @var DOMElement $trans */
+                $trans = $xpath
                     ->query('xliff:target',
                             $transUnit)
                     ->item(0);
 
-                // continue if target element not found
-                if (!$target) {
-                    continue;
+                // use source element if target element not found
+                if (!$trans) {
+                    // search for the source element
+                    /** @var DOMElement $target */
+                    $trans = $xpath
+                        ->query('xliff:source',
+                                $transUnit)
+                        ->item(0);
                 }
 
                 // get the path
-                $path = explode('/',
+                $path = explode('.',
                                 $transUnit->getAttribute('id'));
 
                 if (count($path)) {
@@ -107,7 +112,7 @@ class Xliff
 
                     // set the value
                     $refLanguage = $xpath->evaluate('string(text())',
-                                                    $target);
+                                                    $trans);
                 }
             }
         }
@@ -197,10 +202,10 @@ class Xliff
         foreach ($arrSourceLanguage as $strKey => $varSourceValue) {
             $varTargetValue = is_array($arrTargetLanguage) && isset($arrTargetLanguage[$strKey])
                 ? $arrTargetLanguage[$strKey]
-                : '...';
+                : false;
 
             // build the path for the current item
-            $strItemPath = $strPath . '/' . $strKey;
+            $strItemPath = ($strPath ? $strPath . '.' : '') . $strKey;
 
             // search recursively
             if (is_array($varSourceValue)) {
@@ -227,11 +232,13 @@ class Xliff
                 $transUnit->appendChild($source);
 
                 // create the target element
-                $target = $doc->createElement('target');
-                $target->setAttribute('xml:lang',
-                                      $strTargetLanguage);
-                $target->appendChild($doc->createTextNode($varTargetValue));
-                $transUnit->appendChild($target);
+                if ($strTargetLanguage != 'en') {
+                    $target = $doc->createElement('target');
+                    $target->setAttribute('xml:lang',
+                                          $strTargetLanguage);
+                    $target->appendChild($doc->createTextNode($varTargetValue ? $varTargetValue : $varSourceValue));
+                    $transUnit->appendChild($target);
+                }
             }
         }
     }
@@ -311,7 +318,7 @@ class Xliff
                 : '...';
 
             // build the path for the current item
-            $strItemPath = $strPath . '/' . $strKey;
+            $strItemPath = $strPath . '.' . $strKey;
 
             // search recursively
             if (is_array($varSourceValue)) {
@@ -377,12 +384,14 @@ class Xliff
      *
      * @return string
      */
-    public function generatePhpFromArray(array $arrLanguages)
+    public function generatePhpFromArray(array $arrLanguages, $blnOpenTag = true)
     {
-        $strBuffer = <<<EOF
+        if ($blnOpenTag) {
+            $strBuffer = <<<EOF
 <?php
 
 EOF;
+        }
 
         $this->generatePhpFromArrayItems('$GLOBALS[\'TL_LANG\']',
                                          $arrLanguages,
